@@ -71,7 +71,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               );
             }
             const Icon = item.icon;
-            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+            const isExact = "exact" in item && item.exact;
+            const active = isExact ? pathname === item.to : pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
