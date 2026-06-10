@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.get_all_profiles() FROM public; REVOKE EXECUTE ON FUNCTION public.get_user_roles(uuid) FROM public;
