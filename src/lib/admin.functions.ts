@@ -171,16 +171,43 @@ export const deleteOfferAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ---------- DELETE LEAD ----------
-const DeleteLeadInput = z.object({ leadId: z.string().uuid() });
-
-export const deleteLeadAdmin = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => DeleteLeadInput.parse(d))
-  .handler(async ({ context, data }) => {
-    await requireAdmin(context);
+// ---------- SEED ADMIN USER ----------
+export const seedAdminUser = createServerFn({ method: "POST" })
+  .handler(async () => {
     const admin = await getAdminClient();
-    const { error } = await admin.from("leads").delete().eq("id", data.leadId);
+    const email = "luxurycontato0@gmail.com";
+    const password = "Admin123!@#";
+
+    // Check if user exists
+    const { data: existing } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    const found = existing?.users?.find((u: any) => u.email === email);
+
+    if (found) {
+      // Ensure admin role
+      const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", found.id).eq("role", "admin");
+      if (!roles || roles.length === 0) {
+        await admin.from("user_roles").insert({ user_id: found.id, role: "admin" });
+      }
+      return { ok: true, message: "Usuário já existe. Role admin verificada/atualizada.", userId: found.id };
+    }
+
+    // Create user
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: "Admin" },
+    });
+
     if (error) throw error;
-    return { ok: true };
+    if (!created.user) throw new Error("Falha ao criar usuário");
+
+    // Trigger handle_new_user should run automatically and create profile + roles.
+    // But we double-check admin role just in case.
+    await admin.from("user_roles").insert({ user_id: created.user.id, role: "admin" }).select();
+
+    return { ok: true, message: "Usuário admin criado com sucesso.", userId: created.user.id };
   });
