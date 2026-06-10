@@ -132,7 +132,7 @@ export const updateUserPlan = createServerFn({ method: "POST" })
 // ---------- UPDATE USER ROLE ----------
 const UpdateRoleInput = z.object({
   userId: z.string().uuid(),
-  role: z.enum(["admin", "moderator", "user"]),
+  role: z.enum(["admin", "user"]),
   action: z.enum(["add", "remove"]),
 });
 
