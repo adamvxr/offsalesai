@@ -37,14 +37,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex">
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 glass border-b border-border h-14 flex items-center justify-between px-4">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border h-14 flex items-center justify-between px-4">
         <Link to="/app" className="flex items-center gap-2">
-          <div className="size-8 rounded-lg bg-gradient-primary grid place-items-center shadow-glow">
+          <div className="size-8 rounded-md bg-primary grid place-items-center">
             <Zap className="size-4 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold tracking-tight">OfferAI Pro</span>
+          <span className="font-display tracking-tight">OFFERAI</span>
         </Link>
-        <button onClick={() => setOpen(!open)} className="size-9 rounded-lg glass grid place-items-center">
+        <button onClick={() => setOpen(!open)} className="size-9 rounded-md border border-border grid place-items-center">
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
       </div>
@@ -57,12 +57,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       >
         <div className="hidden lg:flex items-center gap-2.5 px-6 h-16 border-b border-sidebar-border">
-          <div className="size-9 rounded-xl bg-gradient-primary grid place-items-center shadow-glow">
+          <div className="size-9 rounded-md bg-primary grid place-items-center">
             <Zap className="size-5 text-primary-foreground" />
           </div>
           <div>
-            <div className="font-display font-bold tracking-tight leading-none">OfferAI Pro</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">v1 · powered by IA</div>
+            <div className="font-display tracking-tight leading-none text-lg">OFFERAI</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-[0.22em] mt-1">Edição diária · v1</div>
           </div>
         </div>
 
@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {nav.map((item, i) => {
             if ("section" in item) {
               return (
-                <div key={i} className="px-3 pt-5 pb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold">
+                <div key={i} className="px-3 pt-5 pb-1.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/80 font-semibold">
                   {item.section}
                 </div>
               );
@@ -84,13 +84,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all group border-l-2",
                   active
-                    ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent",
+                    ? "bg-sidebar-accent text-foreground border-l-primary"
+                    : "text-sidebar-foreground border-l-transparent hover:bg-sidebar-accent/60 hover:border-l-border",
                 )}
               >
-                <Icon className={cn("size-4 shrink-0", active ? "" : "text-muted-foreground group-hover:text-foreground")} />
+                <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -98,20 +98,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="px-3 mt-4 mb-6">
-          <div className="glass rounded-xl p-4 relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 size-32 bg-primary/30 blur-3xl rounded-full" />
-            <div className="relative">
-              <div className="text-xs text-muted-foreground">Logado como</div>
-              <div className="font-display font-bold text-sm mt-0.5 truncate">{displayName}</div>
-              <div className="text-xs text-muted-foreground mt-1">Plano Pro · 8.200 créditos</div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button className="text-xs font-semibold py-2 rounded-lg bg-gradient-vibrant text-primary-foreground">
-                  Créditos
-                </button>
-                <button onClick={handleSignOut} className="text-xs font-semibold py-2 rounded-lg border border-border hover:bg-muted flex items-center justify-center gap-1">
-                  <LogOut className="size-3" /> Sair
-                </button>
-              </div>
+          <div className="border border-sidebar-border rounded-md p-4 bg-sidebar-accent/40">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">Logado como</div>
+            <div className="font-display text-sm mt-1 truncate">{displayName}</div>
+            <div className="text-xs text-muted-foreground mt-1">Plano Pro · 8.200 créditos</div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button className="text-[10px] font-bold uppercase tracking-widest py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90">
+                Créditos
+              </button>
+              <button onClick={handleSignOut} className="text-[10px] font-bold uppercase tracking-widest py-2 rounded-md border border-border hover:bg-muted flex items-center justify-center gap-1">
+                <LogOut className="size-3" /> Sair
+              </button>
             </div>
           </div>
         </div>
@@ -134,16 +131,13 @@ export function PageHeader({
   eyebrow, title, description, actions,
 }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-border">
       <div className="min-w-0">
         {eyebrow && (
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            <span className="size-1.5 rounded-full bg-gradient-vibrant" />
-            {eyebrow}
-          </div>
+          <div className="eyebrow mb-3">{eyebrow}</div>
         )}
-        <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight">{title}</h1>
-        {description && <p className="text-muted-foreground mt-2 max-w-2xl">{description}</p>}
+        <h1 className="font-display text-4xl sm:text-5xl tracking-tighter leading-[0.95]">{title}</h1>
+        {description && <p className="text-muted-foreground mt-3 max-w-2xl text-sm sm:text-base">{description}</p>}
       </div>
       {actions && <div className="flex gap-2 shrink-0">{actions}</div>}
     </div>
