@@ -41,6 +41,32 @@ function fmtBRL(n: number) {
 }
 
 function AdminPage() {
+  const { isAdmin, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !isAdmin) navigate({ to: "/app" });
+  }, [loading, isAdmin, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[50vh] grid place-items-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-[50vh] grid place-items-center">
+        <div className="text-center space-y-2">
+          <ShieldCheck className="size-8 mx-auto text-muted-foreground" />
+          <p className="text-muted-foreground">Acesso restrito a administradores.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <PageHeader
