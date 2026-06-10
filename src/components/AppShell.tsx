@@ -28,10 +28,11 @@ const navBase = [
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const displayName = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "Você";
   const handleSignOut = async () => { await signOut(); navigate({ to: "/auth" }); };
+  const nav = [...navBase, ...(isAdmin ? [{ to: "/app/admin", label: "Admin", icon: ShieldCheck }] : [])];
 
   return (
     <div className="min-h-screen flex">
