@@ -171,6 +171,20 @@ export const deleteOfferAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- DELETE LEAD ----------
+const DeleteLeadInput = z.object({ leadId: z.string().uuid() });
+
+export const deleteLeadAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => DeleteLeadInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    const admin = await getAdminClient();
+    const { error } = await admin.from("leads").delete().eq("id", data.leadId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 // ---------- SEED ADMIN USER ----------
 export const seedAdminUser = createServerFn({ method: "POST" })
   .handler(async () => {
