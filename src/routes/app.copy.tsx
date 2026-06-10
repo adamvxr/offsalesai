@@ -3,32 +3,44 @@ import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { copyChannels } from "@/lib/mock-data";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { PenLine, Copy, RefreshCw, ChevronRight } from "lucide-react";
+import { Copy, RefreshCw, ChevronRight, Loader2, Wand2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { generateCopy } from "@/lib/ai.functions";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/copy")({
   component: CopyPage,
 });
 
-const samples: Record<string, string[]> = {
-  "Facebook Ads": [
-    "🚨 Atenção mulher acima dos 30: descobrimos um protocolo japonês de 7 dias que está fazendo elas perderem até 4kg sem academia. Saiba como ↓",
-    "Você passou anos tentando emagrecer? O método que funcionou para mais de 12.400 mulheres pode ser sua virada. Toque para conhecer.",
-  ],
-  WhatsApp: [
-    "Oi! Vi que você se interessou pelo Detox 7D. Posso te contar em 30s como funciona? 😊",
-    "Última chamada! As 50 vagas com bônus extra fecham hoje às 23h. Posso te enviar o link?",
-  ],
-};
+type StoredOffer = { name: string; bigIdea: string; promise: string };
 
 function CopyPage() {
   const [channel, setChannel] = useState("Facebook Ads");
-  const list = samples[channel] ?? [
-    `Variação otimizada da copy para ${channel} — gerada pela IA com base na sua oferta.`,
-    `Versão alternativa para ${channel}, com gatilho de urgência e prova social.`,
-    `Variante curta para ${channel}, ideal para teste A/B.`,
-  ];
+  const [offer, setOffer] = useState<StoredOffer | null>(null);
+  const [variations, setVariations] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem("offerai:offer");
+    if (raw) {
+      try { setOffer(JSON.parse(raw)); } catch { /* ignore */ }
+    }
+  }, []);
+
+  const fn = useServerFn(generateCopy);
+  const mutation = useMutation({
+    mutationFn: async (vars: { channel: string }) =>
+      fn({ data: { channel: vars.channel, offerTitle: offer?.name ?? "Oferta", bigIdea: offer?.bigIdea, promise: offer?.promise } }),
+    onSuccess: (res, vars) => {
+      setVariations((v) => ({ ...v, [vars.channel]: (res as { variations: string[] }).variations }));
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao gerar copy"),
+  });
+
+  const list = variations[channel];
 
   return (
     <>
@@ -48,7 +60,7 @@ function CopyPage() {
                 onClick={() => setChannel(c)}
                 className={cn(
                   "w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition",
-                  channel===c ? "bg-gradient-primary text-primary-foreground shadow-glow" : "hover:bg-secondary",
+                  channel===c ? "bg-gradient-vibrant text-primary-foreground shadow-glow" : "hover:bg-secondary",
                 )}
               >
                 {c}
@@ -61,23 +73,40 @@ function CopyPage() {
           <Card className="glass border-border/60 p-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="font-display font-bold text-xl">{channel}</div>
-              <div className="text-sm text-muted-foreground">3 variações geradas · Oferta: Detox 7D</div>
+              <div className="text-sm text-muted-foreground">
+                Oferta: {offer?.name ?? <span className="italic">nenhuma selecionada — gere uma na etapa anterior</span>}
+              </div>
             </div>
-            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg glass text-sm font-semibold">
-              <RefreshCw className="size-4" /> Recriar variações
+            <button
+              onClick={() => mutation.mutate({ channel })}
+              disabled={mutation.isPending}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-vibrant text-primary-foreground text-sm font-semibold shadow-glow disabled:opacity-50"
+            >
+              {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : list ? <RefreshCw className="size-4" /> : <Wand2 className="size-4" />}
+              {list ? "Recriar variações" : "Gerar com IA"}
             </button>
           </Card>
 
-          {list.map((txt, i) => (
+          {!list && !mutation.isPending && (
+            <Card className="glass border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+              Clique em "Gerar com IA" para criar 3 variações de copy para {channel}.
+            </Card>
+          )}
+
+          {list?.map((txt, i) => (
             <Card key={i} className="glass border-border/60 p-5">
               <div className="flex items-center justify-between mb-3">
                 <Badge variant="outline" className="border-accent/40 text-accent">Variação {i+1}</Badge>
                 <div className="flex gap-1.5">
-                  <button className="size-8 rounded-md glass grid place-items-center"><Copy className="size-4" /></button>
-                  <button className="size-8 rounded-md glass grid place-items-center"><PenLine className="size-4" /></button>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(txt); toast.success("Copiado"); }}
+                    className="size-8 rounded-md glass grid place-items-center"
+                  >
+                    <Copy className="size-4" />
+                  </button>
                 </div>
               </div>
-              <p className="text-sm leading-relaxed">{txt}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{txt}</p>
             </Card>
           ))}
 
