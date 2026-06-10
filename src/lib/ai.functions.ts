@@ -5,11 +5,11 @@ import { z } from "zod";
 
 const MODEL = "google/gemini-3-flash-preview";
 
-function getGateway() {
+async function getGateway() {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("Missing LOVABLE_API_KEY");
-  // dynamic import to keep server-only module out of client graph
-  return import("./ai-gateway.server").then((m) => m.createLovableAiGatewayProvider(key));
+  const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+  return createLovableAiGatewayProvider(key);
 }
 
 // ---------- VALIDATE NICHE ----------
