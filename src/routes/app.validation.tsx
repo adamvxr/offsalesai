@@ -168,7 +168,11 @@ function Validation() {
 
           <Link
             to="/app/offer"
-            search={{ niche, pain: pain ?? "" }}
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("offerai:seed", JSON.stringify({ niche, pain: pain ?? "" }));
+              }
+            }}
             className={cn(
               "block text-center w-full px-5 py-4 rounded-xl bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow hover:opacity-95 transition",
               !result && "opacity-50 pointer-events-none",
