@@ -8,7 +8,7 @@ import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
-const nav = [
+const navBase = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { section: "Fluxo da Oferta" },
   { to: "/app/validation", label: "1. Validação", icon: Target },
@@ -23,7 +23,6 @@ const nav = [
   { to: "/app/optimize", label: "Otimizador IA", icon: Sparkles },
   { to: "/app/crm", label: "Mini CRM", icon: Users },
   { to: "/app/library", label: "Biblioteca", icon: Library },
-  { to: "/app/admin", label: "Admin", icon: ShieldCheck },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
