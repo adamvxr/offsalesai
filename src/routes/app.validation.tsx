@@ -1,103 +1,133 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { niches, painsByNiche } from "@/lib/mock-data";
-import { TrendingUp, Search, Swords, Sparkles, Wand2, CheckCircle2 } from "lucide-react";
+import { niches } from "@/lib/mock-data";
+import { TrendingUp, Search, Swords, Sparkles, Wand2, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useServerFn } from "@tanstack/react-start";
+import { validateNiche } from "@/lib/ai.functions";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/validation")({
   component: Validation,
 });
 
+type ValidationResult = {
+  score: number; classification: string;
+  searchVolume: string; competition: string; trend: string; easeOfSale: string;
+  searchBar: number; competitionBar: number; trendBar: number; easeBar: number;
+  pains: string[]; insight: string;
+};
+
 function Validation() {
   const [niche, setNiche] = useState<string>(niches[0]);
   const [pain, setPain] = useState<string | null>(null);
+  const [result, setResult] = useState<ValidationResult | null>(null);
 
-  const pains = painsByNiche[niche] ?? [];
-  const score = 87;
-  const classification = score >= 80 ? "Excelente" : score >= 65 ? "Muito Boa" : score >= 50 ? "Boa" : "Arriscada";
+  const validateFn = useServerFn(validateNiche);
+  const mutation = useMutation({
+    mutationFn: async (vars: { niche: string; pain?: string }) => validateFn({ data: vars }),
+    onSuccess: (data) => { setResult(data as ValidationResult); setPain(null); },
+    onError: (e: Error) => toast.error(e.message || "Erro ao validar"),
+  });
 
-  const metrics = [
-    { icon: Search, label: "Volume de busca", value: "342k/mês", bar: 86 },
-    { icon: Swords, label: "Concorrência", value: "Média", bar: 58 },
-    { icon: TrendingUp, label: "Tendência", value: "+34% YoY", bar: 92 },
-    { icon: Sparkles, label: "Facilidade de venda", value: "Alta", bar: 81 },
-  ];
+  const score = result?.score ?? 0;
+  const classification = result?.classification ?? "—";
+  const metrics = result ? [
+    { icon: Search, label: "Volume de busca", value: result.searchVolume, bar: result.searchBar },
+    { icon: Swords, label: "Concorrência", value: result.competition, bar: result.competitionBar },
+    { icon: TrendingUp, label: "Tendência", value: result.trend, bar: result.trendBar },
+    { icon: Sparkles, label: "Facilidade de venda", value: result.easeOfSale, bar: result.easeBar },
+  ] : [];
 
   return (
     <>
       <PageHeader
         eyebrow="Passo 1 de 8"
         title="Validação de Mercado"
-        description="Antes de criar, a IA valida o nicho com 4 indicadores e devolve um Score 0–100."
+        description="A IA valida o nicho com 4 indicadores e devolve um Score 0–100."
       />
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           <Card className="glass border-border/60 p-5">
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Selecione o nicho</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-4">
               {niches.map((n) => (
                 <button
                   key={n}
-                  onClick={() => { setNiche(n); setPain(null); }}
+                  onClick={() => { setNiche(n); setResult(null); setPain(null); }}
                   className={cn(
                     "px-3.5 py-2 rounded-lg text-sm font-medium transition",
-                    niche === n
-                      ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                      : "glass hover:bg-secondary",
+                    niche === n ? "bg-gradient-vibrant text-primary-foreground shadow-glow" : "glass hover:bg-secondary",
                   )}
                 >
                   {n}
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => mutation.mutate({ niche, pain: pain ?? undefined })}
+              disabled={mutation.isPending}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow disabled:opacity-50"
+            >
+              {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+              Validar com IA
+            </button>
           </Card>
 
-          <Card className="glass border-border/60 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Principais dores</div>
-              <Badge variant="outline" className="border-accent/50 text-accent">IA · {pains.length} encontradas</Badge>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-2">
-              {pains.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPain(p)}
-                  className={cn(
-                    "text-left p-3 rounded-lg border transition flex items-center gap-3",
-                    pain === p ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:border-primary/50",
-                  )}
-                >
-                  <CheckCircle2 className={cn("size-4 shrink-0", pain === p ? "text-primary" : "text-muted-foreground")} />
-                  <span className="text-sm font-medium">{p}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="glass border-border/60 p-5">
-            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Indicadores de mercado</div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {metrics.map((m) => (
-                <div key={m.label} className="p-4 rounded-xl bg-secondary/40 border border-border">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <m.icon className="size-4" /> {m.label}
-                  </div>
-                  <div className="font-display font-bold text-xl mt-1">{m.value}</div>
-                  <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-gradient-vibrant rounded-full" style={{ width: `${m.bar}%` }} />
-                  </div>
+          {result && (
+            <>
+              <Card className="glass border-border/60 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Principais dores</div>
+                  <Badge variant="outline" className="border-accent/50 text-accent">IA · {result.pains.length} encontradas</Badge>
                 </div>
-              ))}
-            </div>
-          </Card>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {result.pains.map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPain(p)}
+                      className={cn(
+                        "text-left p-3 rounded-lg border transition flex items-center gap-3",
+                        pain === p ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:border-primary/50",
+                      )}
+                    >
+                      <CheckCircle2 className={cn("size-4 shrink-0", pain === p ? "text-primary" : "text-muted-foreground")} />
+                      <span className="text-sm font-medium">{p}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="glass border-border/60 p-5">
+                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Indicadores de mercado</div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {metrics.map((m) => (
+                    <div key={m.label} className="p-4 rounded-xl bg-secondary/40 border border-border">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <m.icon className="size-4" /> {m.label}
+                      </div>
+                      <div className="font-display font-bold text-xl mt-1">{m.value}</div>
+                      <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-gradient-vibrant rounded-full" style={{ width: `${m.bar}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="glass border-primary/40 p-5">
+                <div className="text-xs font-semibold uppercase tracking-widest text-primary mb-2">Insight da IA</div>
+                <p className="text-sm leading-relaxed">{result.insight}</p>
+              </Card>
+            </>
+          )}
         </div>
 
-        {/* Score panel */}
         <div className="space-y-5">
           <Card className="glass border-border/60 p-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-glow opacity-60" />
@@ -114,8 +144,8 @@ function Validation() {
                   />
                   <defs>
                     <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.62 0.24 295)" />
-                      <stop offset="100%" stopColor="oklch(0.72 0.18 200)" />
+                      <stop offset="0%" stopColor="oklch(0.68 0.19 38)" />
+                      <stop offset="100%" stopColor="oklch(0.78 0.16 60)" />
                     </linearGradient>
                   </defs>
                 </svg>
@@ -138,7 +168,15 @@ function Validation() {
 
           <Link
             to="/app/offer"
-            className="block text-center w-full px-5 py-4 rounded-xl bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow hover:opacity-95 transition"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("offerai:seed", JSON.stringify({ niche, pain: pain ?? "" }));
+              }
+            }}
+            className={cn(
+              "block text-center w-full px-5 py-4 rounded-xl bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow hover:opacity-95 transition",
+              !result && "opacity-50 pointer-events-none",
+            )}
           >
             <Wand2 className="size-4 inline-block mr-2" />
             Gerar Oferta
