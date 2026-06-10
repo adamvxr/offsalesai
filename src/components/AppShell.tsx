@@ -1,11 +1,12 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Target, Wand2, BookOpen, CreditCard, LayoutTemplate,
   Image as ImageIcon, PenLine, Megaphone, Users, Library, ShieldCheck,
-  Sparkles, Zap, Menu, X,
+  Sparkles, Zap, Menu, X, LogOut,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const nav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -28,6 +29,10 @@ const nav = [
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const displayName = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "Você";
+  const handleSignOut = async () => { await signOut(); navigate({ to: "/auth" }); };
 
   return (
     <div className="min-h-screen flex">
@@ -96,12 +101,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="glass rounded-xl p-4 relative overflow-hidden">
             <div className="absolute -top-10 -right-10 size-32 bg-primary/30 blur-3xl rounded-full" />
             <div className="relative">
-              <div className="text-xs text-muted-foreground">Plano</div>
-              <div className="font-display font-bold text-lg mt-0.5">Pro</div>
-              <div className="text-xs text-muted-foreground mt-1">8.200 créditos IA restantes</div>
-              <button className="mt-3 w-full text-xs font-semibold py-2 rounded-lg bg-gradient-vibrant text-primary-foreground">
-                Comprar créditos
-              </button>
+              <div className="text-xs text-muted-foreground">Logado como</div>
+              <div className="font-display font-bold text-sm mt-0.5 truncate">{displayName}</div>
+              <div className="text-xs text-muted-foreground mt-1">Plano Pro · 8.200 créditos</div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button className="text-xs font-semibold py-2 rounded-lg bg-gradient-vibrant text-primary-foreground">
+                  Créditos
+                </button>
+                <button onClick={handleSignOut} className="text-xs font-semibold py-2 rounded-lg border border-border hover:bg-muted flex items-center justify-center gap-1">
+                  <LogOut className="size-3" /> Sair
+                </button>
+              </div>
             </div>
           </div>
         </div>
