@@ -11,6 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppValidationRouteImport } from './routes/app.validation'
+import { Route as AppTrafficRouteImport } from './routes/app.traffic'
+import { Route as AppOptimizeRouteImport } from './routes/app.optimize'
+import { Route as AppOfferRouteImport } from './routes/app.offer'
+import { Route as AppLibraryRouteImport } from './routes/app.library'
+import { Route as AppLandingRouteImport } from './routes/app.landing'
+import { Route as AppEbookRouteImport } from './routes/app.ebook'
+import { Route as AppCrmRouteImport } from './routes/app.crm'
+import { Route as AppCreativesRouteImport } from './routes/app.creatives'
+import { Route as AppCopyRouteImport } from './routes/app.copy'
+import { Route as AppCheckoutRouteImport } from './routes/app.checkout'
+import { Route as AppAdminRouteImport } from './routes/app.admin'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -22,31 +35,179 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppValidationRoute = AppValidationRouteImport.update({
+  id: '/validation',
+  path: '/validation',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrafficRoute = AppTrafficRouteImport.update({
+  id: '/traffic',
+  path: '/traffic',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOptimizeRoute = AppOptimizeRouteImport.update({
+  id: '/optimize',
+  path: '/optimize',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOfferRoute = AppOfferRouteImport.update({
+  id: '/offer',
+  path: '/offer',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLibraryRoute = AppLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLandingRoute = AppLandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEbookRoute = AppEbookRouteImport.update({
+  id: '/ebook',
+  path: '/ebook',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmRoute = AppCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCreativesRoute = AppCreativesRouteImport.update({
+  id: '/creatives',
+  path: '/creatives',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCopyRoute = AppCopyRouteImport.update({
+  id: '/copy',
+  path: '/copy',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCheckoutRoute = AppCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/admin': typeof AppAdminRoute
+  '/app/checkout': typeof AppCheckoutRoute
+  '/app/copy': typeof AppCopyRoute
+  '/app/creatives': typeof AppCreativesRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/ebook': typeof AppEbookRoute
+  '/app/landing': typeof AppLandingRoute
+  '/app/library': typeof AppLibraryRoute
+  '/app/offer': typeof AppOfferRoute
+  '/app/optimize': typeof AppOptimizeRoute
+  '/app/traffic': typeof AppTrafficRoute
+  '/app/validation': typeof AppValidationRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app/admin': typeof AppAdminRoute
+  '/app/checkout': typeof AppCheckoutRoute
+  '/app/copy': typeof AppCopyRoute
+  '/app/creatives': typeof AppCreativesRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/ebook': typeof AppEbookRoute
+  '/app/landing': typeof AppLandingRoute
+  '/app/library': typeof AppLibraryRoute
+  '/app/offer': typeof AppOfferRoute
+  '/app/optimize': typeof AppOptimizeRoute
+  '/app/traffic': typeof AppTrafficRoute
+  '/app/validation': typeof AppValidationRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/admin': typeof AppAdminRoute
+  '/app/checkout': typeof AppCheckoutRoute
+  '/app/copy': typeof AppCopyRoute
+  '/app/creatives': typeof AppCreativesRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/ebook': typeof AppEbookRoute
+  '/app/landing': typeof AppLandingRoute
+  '/app/library': typeof AppLibraryRoute
+  '/app/offer': typeof AppOfferRoute
+  '/app/optimize': typeof AppOptimizeRoute
+  '/app/traffic': typeof AppTrafficRoute
+  '/app/validation': typeof AppValidationRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/admin'
+    | '/app/checkout'
+    | '/app/copy'
+    | '/app/creatives'
+    | '/app/crm'
+    | '/app/ebook'
+    | '/app/landing'
+    | '/app/library'
+    | '/app/offer'
+    | '/app/optimize'
+    | '/app/traffic'
+    | '/app/validation'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app'
-  id: '__root__' | '/' | '/app'
+  to:
+    | '/'
+    | '/app/admin'
+    | '/app/checkout'
+    | '/app/copy'
+    | '/app/creatives'
+    | '/app/crm'
+    | '/app/ebook'
+    | '/app/landing'
+    | '/app/library'
+    | '/app/offer'
+    | '/app/optimize'
+    | '/app/traffic'
+    | '/app/validation'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/admin'
+    | '/app/checkout'
+    | '/app/copy'
+    | '/app/creatives'
+    | '/app/crm'
+    | '/app/ebook'
+    | '/app/landing'
+    | '/app/library'
+    | '/app/offer'
+    | '/app/optimize'
+    | '/app/traffic'
+    | '/app/validation'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +226,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/validation': {
+      id: '/app/validation'
+      path: '/validation'
+      fullPath: '/app/validation'
+      preLoaderRoute: typeof AppValidationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/traffic': {
+      id: '/app/traffic'
+      path: '/traffic'
+      fullPath: '/app/traffic'
+      preLoaderRoute: typeof AppTrafficRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/optimize': {
+      id: '/app/optimize'
+      path: '/optimize'
+      fullPath: '/app/optimize'
+      preLoaderRoute: typeof AppOptimizeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/offer': {
+      id: '/app/offer'
+      path: '/offer'
+      fullPath: '/app/offer'
+      preLoaderRoute: typeof AppOfferRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/library': {
+      id: '/app/library'
+      path: '/library'
+      fullPath: '/app/library'
+      preLoaderRoute: typeof AppLibraryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/landing': {
+      id: '/app/landing'
+      path: '/landing'
+      fullPath: '/app/landing'
+      preLoaderRoute: typeof AppLandingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ebook': {
+      id: '/app/ebook'
+      path: '/ebook'
+      fullPath: '/app/ebook'
+      preLoaderRoute: typeof AppEbookRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm': {
+      id: '/app/crm'
+      path: '/crm'
+      fullPath: '/app/crm'
+      preLoaderRoute: typeof AppCrmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/creatives': {
+      id: '/app/creatives'
+      path: '/creatives'
+      fullPath: '/app/creatives'
+      preLoaderRoute: typeof AppCreativesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/copy': {
+      id: '/app/copy'
+      path: '/copy'
+      fullPath: '/app/copy'
+      preLoaderRoute: typeof AppCopyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/checkout': {
+      id: '/app/checkout'
+      path: '/checkout'
+      fullPath: '/app/checkout'
+      preLoaderRoute: typeof AppCheckoutRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin': {
+      id: '/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
+  AppCheckoutRoute: typeof AppCheckoutRoute
+  AppCopyRoute: typeof AppCopyRoute
+  AppCreativesRoute: typeof AppCreativesRoute
+  AppCrmRoute: typeof AppCrmRoute
+  AppEbookRoute: typeof AppEbookRoute
+  AppLandingRoute: typeof AppLandingRoute
+  AppLibraryRoute: typeof AppLibraryRoute
+  AppOfferRoute: typeof AppOfferRoute
+  AppOptimizeRoute: typeof AppOptimizeRoute
+  AppTrafficRoute: typeof AppTrafficRoute
+  AppValidationRoute: typeof AppValidationRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
+  AppCheckoutRoute: AppCheckoutRoute,
+  AppCopyRoute: AppCopyRoute,
+  AppCreativesRoute: AppCreativesRoute,
+  AppCrmRoute: AppCrmRoute,
+  AppEbookRoute: AppEbookRoute,
+  AppLandingRoute: AppLandingRoute,
+  AppLibraryRoute: AppLibraryRoute,
+  AppOfferRoute: AppOfferRoute,
+  AppOptimizeRoute: AppOptimizeRoute,
+  AppTrafficRoute: AppTrafficRoute,
+  AppValidationRoute: AppValidationRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
