@@ -2,130 +2,120 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { creativeFormats, videoFormats } from "@/lib/mock-data";
-import { Image as ImageIcon, Video, Sparkles, RefreshCw, Download, Pencil, ChevronRight, Mic, Wand2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Image as ImageIcon, Video, Sparkles, RefreshCw, Download, ChevronRight, Wand2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useServerFn } from "@tanstack/react-start";
+import { generateCreative } from "@/lib/ai.functions";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useCreatives } from "@/hooks/useResources";
 
 export const Route = createFileRoute("/app/creatives")({
   component: Creatives,
 });
 
+const types = [
+  { id: "instagram_post", label: "Post Instagram", icon: ImageIcon },
+  { id: "instagram_story", label: "Story", icon: ImageIcon },
+  { id: "reels_script", label: "Roteiro Reels", icon: Video },
+  { id: "vsl_script", label: "Roteiro VSL", icon: Video },
+  { id: "google_ad", label: "Google Ads", icon: Sparkles },
+] as const;
+
 function Creatives() {
-  const [tab, setTab] = useState<"img" | "vid">("img");
+  const [type, setType] = useState<(typeof types)[number]["id"]>("instagram_post");
+  const [offerTitle, setOfferTitle] = useState("");
+  const [current, setCurrent] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const { data: creatives = [] } = useCreatives();
+
+  const generateFn = useServerFn(generateCreative);
+  const mutation = useMutation({
+    mutationFn: async () => generateFn({ data: { offerTitle, type } }),
+    onSuccess: (res) => {
+      setCurrent(res.content);
+      qc.invalidateQueries({ queryKey: ["creatives"] });
+      toast.success("Criativo gerado e salvo");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const download = () => {
+    if (!current) return;
+    const blob = new Blob([current], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${type}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <>
       <PageHeader
         eyebrow="Passo 6 de 8"
         title="Criativos IA"
-        description="Gere imagens e vídeos para todas as redes — com roteiro, narração e avatar IA."
+        description="Posts, stories, roteiros de Reels e VSL — gerados pela IA. (15 créditos)"
       />
 
-      <div className="flex gap-2 mb-5">
-        <button
-          onClick={() => setTab("img")}
-          className={cn("px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2", tab==="img"?"bg-gradient-primary text-primary-foreground shadow-glow":"glass")}
-        >
-          <ImageIcon className="size-4" /> Imagens
-        </button>
-        <button
-          onClick={() => setTab("vid")}
-          className={cn("px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2", tab==="vid"?"bg-gradient-primary text-primary-foreground shadow-glow":"glass")}
-        >
-          <Video className="size-4" /> Vídeos
-        </button>
-      </div>
-
-      {tab === "img" ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {creativeFormats.map((f, i) => (
-            <Card key={f.id} className="glass border-border/60 p-4 overflow-hidden">
-              <div
-                className="aspect-square rounded-lg bg-gradient-to-br relative overflow-hidden mb-3"
-                style={{
-                  background: `linear-gradient(135deg, oklch(0.62 0.24 ${280 + i*15}), oklch(0.72 0.18 ${190 + i*20}))`,
-                }}
-              >
-                <div className="absolute inset-0 p-5 flex flex-col text-primary-foreground">
-                  <Badge className="self-start bg-black/40 backdrop-blur-sm border-0 text-[10px] text-primary-foreground">CRIATIVO IA</Badge>
-                  <div className="mt-auto">
-                    <div className="font-display font-bold text-xl leading-tight">Detox 7D</div>
-                    <div className="text-xs opacity-90 mt-1">Perca 4kg em 1 semana</div>
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,oklch(1_0_0_/0.25),transparent_60%)]" />
-              </div>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="font-semibold text-sm">{f.label}</div>
-                  <div className="text-xs text-muted-foreground">{f.size}</div>
-                </div>
-                <Sparkles className="size-4 text-accent" />
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button className="py-2 rounded-md glass text-xs font-medium flex items-center justify-center gap-1"><RefreshCw className="size-3" /></button>
-                <button className="py-2 rounded-md glass text-xs font-medium flex items-center justify-center gap-1"><Pencil className="size-3" /></button>
-                <button className="py-2 rounded-md bg-gradient-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1"><Download className="size-3" /></button>
-              </div>
-            </Card>
+      <Card className="glass border-border/60 p-5 mb-5">
+        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Tipo de criativo</div>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {types.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setType(t.id)}
+              className={cn("px-3.5 py-2 rounded-lg text-sm font-semibold inline-flex items-center gap-2",
+                type === t.id ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass")}
+            >
+              <t.icon className="size-4" /> {t.label}
+            </button>
           ))}
         </div>
-      ) : (
-        <div className="grid lg:grid-cols-5 gap-5">
-          <Card className="glass border-border/60 p-5 lg:col-span-2">
-            <div className="aspect-[9/16] rounded-xl bg-gradient-to-br from-primary via-chart-3 to-accent relative overflow-hidden">
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="size-16 rounded-full bg-background/30 backdrop-blur-md grid place-items-center border border-white/20">
-                  <Video className="size-7 text-primary-foreground" />
-                </div>
-              </div>
-              <div className="absolute bottom-0 inset-x-0 p-5 text-primary-foreground">
-                <div className="font-display font-bold text-xl">Reels · Detox 7D</div>
-                <div className="text-xs opacity-90">00:32 · 1080×1920</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-3">
-              <button className="py-2.5 rounded-lg glass text-sm font-medium"><RefreshCw className="size-4 mx-auto" /></button>
-              <button className="py-2.5 rounded-lg glass text-sm font-medium"><Pencil className="size-4 mx-auto" /></button>
-              <button className="py-2.5 rounded-lg bg-gradient-primary text-primary-foreground text-sm font-medium"><Download className="size-4 mx-auto" /></button>
-            </div>
-          </Card>
-
-          <div className="lg:col-span-3 space-y-4">
-            <Card className="glass border-border/60 p-5">
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Formatos</div>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {videoFormats.map((v) => (
-                  <button key={v.id} className="p-3 rounded-lg border border-border bg-secondary/40 hover:border-primary/40 text-left">
-                    <div className="font-semibold text-sm">{v.label}</div>
-                    <div className="text-xs text-muted-foreground">{v.duration}</div>
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="glass border-border/60 p-5">
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Componentes gerados pela IA</div>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {[
-                  { icon: Wand2, label: "Roteiro", desc: "Hook + corpo + CTA" },
-                  { icon: Mic, label: "Narração", desc: "Voz IA ElevenLabs" },
-                  { icon: Sparkles, label: "Avatar IA", desc: "HeyGen / D-ID" },
-                  { icon: Video, label: "Legendas", desc: "Sincronizadas word-by-word" },
-                ].map((c) => (
-                  <div key={c.label} className="p-3 rounded-lg bg-secondary/40 border border-border flex items-center gap-3">
-                    <div className="size-9 rounded-lg bg-gradient-primary grid place-items-center"><c.icon className="size-4 text-primary-foreground" /></div>
-                    <div>
-                      <div className="font-semibold text-sm">{c.label}</div>
-                      <div className="text-xs text-muted-foreground">{c.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
+        <div className="grid sm:grid-cols-[1fr_auto] gap-3">
+          <Input placeholder="Título da oferta" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} />
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!offerTitle || mutation.isPending}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow disabled:opacity-50"
+          >
+            {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} Gerar
+          </button>
         </div>
+      </Card>
+
+      {current && (
+        <Card className="glass border-border/60 p-5 mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <Badge className="bg-accent/15 text-accent border border-accent/30">{type}</Badge>
+            <div className="flex gap-2">
+              <button onClick={() => mutation.mutate()} className="px-3 py-1.5 rounded-lg glass text-xs font-medium inline-flex items-center gap-1.5"><RefreshCw className="size-3" /> Recriar</button>
+              <button onClick={download} className="px-3 py-1.5 rounded-lg bg-gradient-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1.5"><Download className="size-3" /> Baixar</button>
+            </div>
+          </div>
+          <pre className="text-sm whitespace-pre-wrap font-sans p-4 rounded-lg bg-secondary/40 border border-border max-h-[480px] overflow-auto">{current}</pre>
+        </Card>
+      )}
+
+      {creatives.length > 0 && (
+        <Card className="glass border-border/60 p-5">
+          <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Histórico</div>
+          <div className="space-y-2">
+            {creatives.slice(0, 10).map((c: any) => (
+              <button
+                key={c.id}
+                onClick={() => { setCurrent(c.content); setType(c.type); }}
+                className="w-full text-left p-3 rounded-lg bg-secondary/40 border border-border hover:border-primary/40"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-sm">{c.prompt || "(sem título)"}</div>
+                  <Badge variant="outline" className="text-[10px]">{c.type}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground line-clamp-1 mt-1">{c.content}</div>
+              </button>
+            ))}
+          </div>
+        </Card>
       )}
 
       <div className="mt-6 flex justify-end">
