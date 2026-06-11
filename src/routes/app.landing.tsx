@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useLandingPages, usePublishLanding } from "@/hooks/useResources";
 
 export const Route = createFileRoute("/app/landing")({
-  component: Landing;
+  component: Landing,
 });
 
 function Landing() {
