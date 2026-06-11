@@ -3,13 +3,13 @@ import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { niches } from "@/lib/mock-data";
 import { TrendingUp, Search, Swords, Sparkles, Wand2, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { validateNiche } from "@/lib/ai.functions";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useNiches } from "@/hooks/useResources";
 
 export const Route = createFileRoute("/app/validation")({
   component: Validation,
@@ -23,14 +23,19 @@ type ValidationResult = {
 };
 
 function Validation() {
-  const [niche, setNiche] = useState<string>(niches[0]);
+  const { data: niches = [], isLoading: nichesLoading } = useNiches();
+  const [niche, setNiche] = useState<string>("");
   const [pain, setPain] = useState<string | null>(null);
   const [result, setResult] = useState<ValidationResult | null>(null);
+
+  const activeNiche = niche || niches[0]?.name || "";
+  const selectedNiche = niches.find((n: any) => n.name === activeNiche);
+  const dbPains: string[] = selectedNiche?.pains ?? [];
 
   const validateFn = useServerFn(validateNiche);
   const mutation = useMutation({
     mutationFn: async (vars: { niche: string; pain?: string }) => validateFn({ data: vars }),
-    onSuccess: (data) => { setResult(data as ValidationResult); setPain(null); },
+    onSuccess: (data) => { setResult(data as ValidationResult); toast.success("Validação concluída"); },
     onError: (e: Error) => toast.error(e.message || "Erro ao validar"),
   });
 
@@ -43,35 +48,41 @@ function Validation() {
     { icon: Sparkles, label: "Facilidade de venda", value: result.easeOfSale, bar: result.easeBar },
   ] : [];
 
+  const painList = result?.pains ?? dbPains;
+
   return (
     <>
       <PageHeader
         eyebrow="Passo 1 de 8"
         title="Validação de Mercado"
-        description="A IA valida o nicho com 4 indicadores e devolve um Score 0–100."
+        description="A IA valida o nicho com 4 indicadores e devolve um Score 0–100. (5 créditos)"
       />
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           <Card className="glass border-border/60 p-5">
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Selecione o nicho</div>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {niches.map((n) => (
-                <button
-                  key={n}
-                  onClick={() => { setNiche(n); setResult(null); setPain(null); }}
-                  className={cn(
-                    "px-3.5 py-2 rounded-lg text-sm font-medium transition",
-                    niche === n ? "bg-gradient-vibrant text-primary-foreground shadow-glow" : "glass hover:bg-secondary",
-                  )}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+            {nichesLoading ? (
+              <div className="text-sm text-muted-foreground">Carregando nichos…</div>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {niches.map((n: any) => (
+                  <button
+                    key={n.id}
+                    onClick={() => { setNiche(n.name); setResult(null); setPain(null); }}
+                    className={cn(
+                      "px-3.5 py-2 rounded-lg text-sm font-medium transition",
+                      activeNiche === n.name ? "bg-gradient-vibrant text-primary-foreground shadow-glow" : "glass hover:bg-secondary",
+                    )}
+                  >
+                    {n.name}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
-              onClick={() => mutation.mutate({ niche, pain: pain ?? undefined })}
-              disabled={mutation.isPending}
+              onClick={() => mutation.mutate({ niche: activeNiche, pain: pain ?? undefined })}
+              disabled={mutation.isPending || !activeNiche}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow disabled:opacity-50"
             >
               {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
@@ -79,30 +90,34 @@ function Validation() {
             </button>
           </Card>
 
+          {painList.length > 0 && (
+            <Card className="glass border-border/60 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Principais dores</div>
+                <Badge variant="outline" className="border-accent/50 text-accent">
+                  {result ? `IA · ${result.pains.length} encontradas` : `Banco · ${dbPains.length}`}
+                </Badge>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {painList.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPain(p)}
+                    className={cn(
+                      "text-left p-3 rounded-lg border transition flex items-center gap-3",
+                      pain === p ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:border-primary/50",
+                    )}
+                  >
+                    <CheckCircle2 className={cn("size-4 shrink-0", pain === p ? "text-primary" : "text-muted-foreground")} />
+                    <span className="text-sm font-medium">{p}</span>
+                  </button>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {result && (
             <>
-              <Card className="glass border-border/60 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Principais dores</div>
-                  <Badge variant="outline" className="border-accent/50 text-accent">IA · {result.pains.length} encontradas</Badge>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {result.pains.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPain(p)}
-                      className={cn(
-                        "text-left p-3 rounded-lg border transition flex items-center gap-3",
-                        pain === p ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:border-primary/50",
-                      )}
-                    >
-                      <CheckCircle2 className={cn("size-4 shrink-0", pain === p ? "text-primary" : "text-muted-foreground")} />
-                      <span className="text-sm font-medium">{p}</span>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-
               <Card className="glass border-border/60 p-5">
                 <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Indicadores de mercado</div>
                 <div className="grid sm:grid-cols-2 gap-3">
@@ -160,7 +175,7 @@ function Validation() {
                 <span className="size-1.5 rounded-full bg-success" /> {classification}
               </div>
               <div className="text-sm text-muted-foreground mt-3">
-                <span className="font-semibold text-foreground">{niche}</span>
+                <span className="font-semibold text-foreground">{activeNiche || "—"}</span>
                 {pain && <> · {pain}</>}
               </div>
             </div>
@@ -170,12 +185,12 @@ function Validation() {
             to="/app/offer"
             onClick={() => {
               if (typeof window !== "undefined") {
-                sessionStorage.setItem("offerai:seed", JSON.stringify({ niche, pain: pain ?? "" }));
+                sessionStorage.setItem("offerai:seed", JSON.stringify({ niche: activeNiche, pain: pain ?? "" }));
               }
             }}
             className={cn(
               "block text-center w-full px-5 py-4 rounded-xl bg-gradient-vibrant text-primary-foreground font-semibold shadow-glow hover:opacity-95 transition",
-              !result && "opacity-50 pointer-events-none",
+              !activeNiche && "opacity-50 pointer-events-none",
             )}
           >
             <Wand2 className="size-4 inline-block mr-2" />
