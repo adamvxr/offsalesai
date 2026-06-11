@@ -14,6 +14,165 @@ export type Database = {
   }
   public: {
     Tables: {
+      creatives: {
+        Row: {
+          content: string | null
+          created_at: string
+          file_url: string | null
+          id: string
+          offer_id: string | null
+          prompt: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          offer_id?: string | null
+          prompt?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          offer_id?: string | null
+          prompt?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creatives_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_ledger: {
+        Row: {
+          created_at: string
+          delta: number
+          id: string
+          metadata: Json | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: string
+          metadata?: Json | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ebooks: {
+        Row: {
+          content: Json
+          cover_url: string | null
+          created_at: string
+          id: string
+          offer_id: string | null
+          pdf_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: Json
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          pdf_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          pdf_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ebooks_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_pages: {
+        Row: {
+          color: string
+          created_at: string
+          html: string
+          id: string
+          offer_id: string | null
+          published: boolean
+          slug: string | null
+          theme: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          html?: string
+          id?: string
+          offer_id?: string | null
+          published?: boolean
+          slug?: string | null
+          theme?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          html?: string
+          id?: string
+          offer_id?: string | null
+          published?: boolean
+          slug?: string | null
+          theme?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_pages_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           created_at: string
@@ -61,6 +220,27 @@ export type Database = {
           },
         ]
       }
+      niches: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          pains: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          pains?: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          pains?: string[]
+        }
+        Relationships: []
+      }
       offers: {
         Row: {
           created_at: string
@@ -96,6 +276,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      products: {
+        Row: {
+          checkout_url: string | null
+          created_at: string
+          id: string
+          offer_id: string | null
+          platform: string
+          price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checkout_url?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          platform?: string
+          price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checkout_url?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          platform?: string
+          price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -153,6 +374,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_credits: {
+        Args: { _amount: number; _reason: string; _user_id: string }
+        Returns: number
+      }
       get_all_profiles: {
         Args: never
         Returns: {
