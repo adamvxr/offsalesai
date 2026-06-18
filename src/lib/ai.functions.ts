@@ -121,9 +121,10 @@ export const generateCopy = createServerFn({ method: "POST" })
       model: gateway(MODEL),
       output: Output.object({
         schema: z.object({
-          variations: z.array(z.string()).min(3).max(4),
+          variations: z.array(z.string()),
         }),
       }),
+
       prompt: `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente.`,
     });
 
