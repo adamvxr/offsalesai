@@ -34,20 +34,21 @@ export const validateNiche = createServerFn({ method: "POST" })
       model: gateway(MODEL),
       output: Output.object({
         schema: z.object({
-          score: z.number().min(0).max(100),
+          score: z.number(),
           classification: z.string(),
           searchVolume: z.string(),
           competition: z.string(),
           trend: z.string(),
           easeOfSale: z.string(),
-          searchBar: z.number().min(0).max(100),
-          competitionBar: z.number().min(0).max(100),
-          trendBar: z.number().min(0).max(100),
-          easeBar: z.number().min(0).max(100),
-          pains: z.array(z.string()).min(3).max(6),
+          searchBar: z.number(),
+          competitionBar: z.number(),
+          trendBar: z.number(),
+          easeBar: z.number(),
+          pains: z.array(z.string()),
           insight: z.string(),
         }),
       }),
+
       prompt: `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português um score de 0-100, classificação (Excelente/Muito Boa/Boa/Arriscada), volume de busca estimado (ex: "320k/mês"), nível de concorrência, tendência YoY, facilidade de venda, barras (0-100) para cada indicador, 4-6 dores reais do público, e um insight estratégico curto.`,
     });
     return output;
@@ -76,12 +77,13 @@ export const generateOffer = createServerFn({ method: "POST" })
           promise: z.string(),
           headline: z.string(),
           subheadline: z.string(),
-          benefits: z.array(z.string()).min(4).max(6),
-          bonuses: z.array(z.string()).min(3).max(5),
+          benefits: z.array(z.string()),
+          bonuses: z.array(z.string()),
           guarantee: z.string(),
           priceSuggestion: z.string(),
         }),
       }),
+
       prompt: `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Big Idea contraintuitiva, mecanismo único nomeado (com ™), promessa específica e mensurável com prazo, headline forte, subheadline complementar, 4-6 benefícios em bullets curtos, 3-5 bônus irresistíveis, garantia incondicional, sugestão de preço (R$).`,
     });
 
@@ -119,9 +121,10 @@ export const generateCopy = createServerFn({ method: "POST" })
       model: gateway(MODEL),
       output: Output.object({
         schema: z.object({
-          variations: z.array(z.string()).min(3).max(4),
+          variations: z.array(z.string()),
         }),
       }),
+
       prompt: `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente.`,
     });
 
@@ -162,10 +165,11 @@ export const generateEbook = createServerFn({ method: "POST" })
             title: z.string(),
             summary: z.string(),
             content: z.string(),
-          })).min(chaptersCount).max(chaptersCount + 4),
+          })),
           coverPrompt: z.string(),
         }),
       }),
+
       prompt: `Crie um ebook profissional em português para o nicho "${data.niche}", título base "${data.title}". Tier: ${data.tier} (${chaptersCount} capítulos). Cada capítulo deve ter título cativante, summary de 1 frase, e content de 3-5 parágrafos com conteúdo útil e prático. Inclua um coverPrompt detalhado para gerar a capa.`,
     });
 
