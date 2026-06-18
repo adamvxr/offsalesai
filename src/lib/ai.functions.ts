@@ -77,12 +77,13 @@ export const generateOffer = createServerFn({ method: "POST" })
           promise: z.string(),
           headline: z.string(),
           subheadline: z.string(),
-          benefits: z.array(z.string()).min(4).max(6),
-          bonuses: z.array(z.string()).min(3).max(5),
+          benefits: z.array(z.string()),
+          bonuses: z.array(z.string()),
           guarantee: z.string(),
           priceSuggestion: z.string(),
         }),
       }),
+
       prompt: `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Big Idea contraintuitiva, mecanismo único nomeado (com ™), promessa específica e mensurável com prazo, headline forte, subheadline complementar, 4-6 benefícios em bullets curtos, 3-5 bônus irresistíveis, garantia incondicional, sugestão de preço (R$).`,
     });
 
