@@ -80,6 +80,23 @@ const OfferInput = z.object({
   pain: z.string().optional(),
   audience: z.string().optional(),
 });
+const stringArray = z.preprocess((value) => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string") return value.split(/\n|;|•|-/).map((item) => item.trim()).filter(Boolean);
+  return [];
+}, z.array(z.string()));
+const OfferOutput = z.object({
+  name: z.string().default("Oferta Gerada"),
+  bigIdea: z.string().default(""),
+  mechanism: z.string().default(""),
+  promise: z.string().default(""),
+  headline: z.string().default(""),
+  subheadline: z.string().default(""),
+  benefits: stringArray.default([]),
+  bonuses: stringArray.default([]),
+  guarantee: z.string().default("Garantia incondicional de 7 dias"),
+  priceSuggestion: z.string().default("R$ 97"),
+});
 
 export const generateOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -87,25 +104,7 @@ export const generateOffer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await consumeCredits(context.supabase, context.userId, 10, "generate_offer");
     const gateway = await getGateway();
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          name: z.string(),
-          bigIdea: z.string(),
-          mechanism: z.string(),
-          promise: z.string(),
-          headline: z.string(),
-          subheadline: z.string(),
-          benefits: z.array(z.string()),
-          bonuses: z.array(z.string()),
-          guarantee: z.string(),
-          priceSuggestion: z.string(),
-        }),
-      }),
-
-      prompt: `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Big Idea contraintuitiva, mecanismo único nomeado (com ™), promessa específica e mensurável com prazo, headline forte, subheadline complementar, 4-6 benefícios em bullets curtos, 3-5 bônus irresistíveis, garantia incondicional, sugestão de preço (R$).`,
-    });
+    const output = await generateStructured(gateway, OfferOutput, `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Retorne as chaves: name, bigIdea, mechanism, promise, headline, subheadline, benefits, bonuses, guarantee, priceSuggestion. Benefits deve ter 4-6 itens e bonuses 3-5 itens.`);
 
     const { data: saved, error } = await context.supabase
       .from("offers")
@@ -137,16 +136,7 @@ export const generateCopy = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await consumeCredits(context.supabase, context.userId, 5, "generate_copy");
     const gateway = await getGateway();
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          variations: z.array(z.string()),
-        }),
-      }),
-
-      prompt: `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente.`,
-    });
+    const output = await generateStructured(gateway, z.object({ variations: stringArray.default([]) }), `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente. Retorne a chave variations como array.`);
 
     // salvar como criativo
     await context.supabase.from("creatives").insert({
