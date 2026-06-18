@@ -165,10 +165,11 @@ export const generateEbook = createServerFn({ method: "POST" })
             title: z.string(),
             summary: z.string(),
             content: z.string(),
-          })).min(chaptersCount).max(chaptersCount + 4),
+          })),
           coverPrompt: z.string(),
         }),
       }),
+
       prompt: `Crie um ebook profissional em português para o nicho "${data.niche}", título base "${data.title}". Tier: ${data.tier} (${chaptersCount} capítulos). Cada capítulo deve ter título cativante, summary de 1 frase, e content de 3-5 parágrafos com conteúdo útil e prático. Inclua um coverPrompt detalhado para gerar a capa.`,
     });
 
