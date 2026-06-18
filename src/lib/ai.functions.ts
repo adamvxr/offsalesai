@@ -34,20 +34,21 @@ export const validateNiche = createServerFn({ method: "POST" })
       model: gateway(MODEL),
       output: Output.object({
         schema: z.object({
-          score: z.number().min(0).max(100),
+          score: z.number(),
           classification: z.string(),
           searchVolume: z.string(),
           competition: z.string(),
           trend: z.string(),
           easeOfSale: z.string(),
-          searchBar: z.number().min(0).max(100),
-          competitionBar: z.number().min(0).max(100),
-          trendBar: z.number().min(0).max(100),
-          easeBar: z.number().min(0).max(100),
-          pains: z.array(z.string()).min(3).max(6),
+          searchBar: z.number(),
+          competitionBar: z.number(),
+          trendBar: z.number(),
+          easeBar: z.number(),
+          pains: z.array(z.string()),
           insight: z.string(),
         }),
       }),
+
       prompt: `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português um score de 0-100, classificação (Excelente/Muito Boa/Boa/Arriscada), volume de busca estimado (ex: "320k/mês"), nível de concorrência, tendência YoY, facilidade de venda, barras (0-100) para cada indicador, 4-6 dores reais do público, e um insight estratégico curto.`,
     });
     return output;
