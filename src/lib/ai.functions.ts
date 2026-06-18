@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 
 const MODEL = "google/gemini-3-flash-preview";
@@ -21,8 +21,48 @@ async function consumeCredits(supabase: any, userId: string, amount: number, rea
   if (error) throw new Error(error.message);
 }
 
+function extractJsonObject(text: string) {
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("A IA não retornou um JSON válido. Tente novamente com uma descrição mais específica.");
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+async function generateStructured<T>(gateway: Awaited<ReturnType<typeof getGateway>>, schema: z.ZodSchema<T>, prompt: string) {
+  const { text } = await generateText({
+    model: gateway(MODEL),
+    prompt: `${prompt}\n\nResponda APENAS com um objeto JSON válido, sem markdown, sem comentários e sem texto fora do JSON. Use exatamente as chaves solicitadas.`,
+  });
+
+  try {
+    return schema.parse(extractJsonObject(text));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error("A IA retornou um JSON inválido. Tente novamente.");
+    }
+    throw error;
+  }
+}
+
 // ---------- VALIDATE NICHE (5 créditos) ----------
 const ValidateInput = z.object({ niche: z.string().min(2), pain: z.string().optional() });
+const ValidateOutput = z.object({
+  score: z.coerce.number().default(0),
+  classification: z.string().default("Boa"),
+  searchVolume: z.string().default("Não estimado"),
+  competition: z.string().default("Média"),
+  trend: z.string().default("Estável"),
+  easeOfSale: z.string().default("Média"),
+  searchBar: z.coerce.number().default(50),
+  competitionBar: z.coerce.number().default(50),
+  trendBar: z.coerce.number().default(50),
+  easeBar: z.coerce.number().default(50),
+  pains: z.array(z.string()).default([]),
+  insight: z.string().default(""),
+});
 
 export const validateNiche = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -30,27 +70,7 @@ export const validateNiche = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await consumeCredits(context.supabase, context.userId, 5, "validate_niche");
     const gateway = await getGateway();
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          score: z.number(),
-          classification: z.string(),
-          searchVolume: z.string(),
-          competition: z.string(),
-          trend: z.string(),
-          easeOfSale: z.string(),
-          searchBar: z.number(),
-          competitionBar: z.number(),
-          trendBar: z.number(),
-          easeBar: z.number(),
-          pains: z.array(z.string()),
-          insight: z.string(),
-        }),
-      }),
-
-      prompt: `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português um score de 0-100, classificação (Excelente/Muito Boa/Boa/Arriscada), volume de busca estimado (ex: "320k/mês"), nível de concorrência, tendência YoY, facilidade de venda, barras (0-100) para cada indicador, 4-6 dores reais do público, e um insight estratégico curto.`,
-    });
+    const output = await generateStructured(gateway, ValidateOutput, `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português as chaves: score, classification, searchVolume, competition, trend, easeOfSale, searchBar, competitionBar, trendBar, easeBar, pains, insight. Score e barras devem ser números de 0-100. Pains deve conter 4-6 dores reais do público.`);
     return output;
   });
 
