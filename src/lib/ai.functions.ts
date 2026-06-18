@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 
 const MODEL = "google/gemini-3-flash-preview";
@@ -21,8 +21,48 @@ async function consumeCredits(supabase: any, userId: string, amount: number, rea
   if (error) throw new Error(error.message);
 }
 
+function extractJsonObject(text: string) {
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("A IA não retornou um JSON válido. Tente novamente com uma descrição mais específica.");
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+async function generateStructured<T>(gateway: Awaited<ReturnType<typeof getGateway>>, schema: z.ZodSchema<T>, prompt: string) {
+  const { text } = await generateText({
+    model: gateway(MODEL),
+    prompt: `${prompt}\n\nResponda APENAS com um objeto JSON válido, sem markdown, sem comentários e sem texto fora do JSON. Use exatamente as chaves solicitadas.`,
+  });
+
+  try {
+    return schema.parse(extractJsonObject(text));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error("A IA retornou um JSON inválido. Tente novamente.");
+    }
+    throw error;
+  }
+}
+
 // ---------- VALIDATE NICHE (5 créditos) ----------
 const ValidateInput = z.object({ niche: z.string().min(2), pain: z.string().optional() });
+const ValidateOutput = z.object({
+  score: z.coerce.number().default(0),
+  classification: z.string().default("Boa"),
+  searchVolume: z.string().default("Não estimado"),
+  competition: z.string().default("Média"),
+  trend: z.string().default("Estável"),
+  easeOfSale: z.string().default("Média"),
+  searchBar: z.coerce.number().default(50),
+  competitionBar: z.coerce.number().default(50),
+  trendBar: z.coerce.number().default(50),
+  easeBar: z.coerce.number().default(50),
+  pains: z.array(z.string()).default([]),
+  insight: z.string().default(""),
+});
 
 export const validateNiche = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -30,27 +70,7 @@ export const validateNiche = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await consumeCredits(context.supabase, context.userId, 5, "validate_niche");
     const gateway = await getGateway();
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          score: z.number(),
-          classification: z.string(),
-          searchVolume: z.string(),
-          competition: z.string(),
-          trend: z.string(),
-          easeOfSale: z.string(),
-          searchBar: z.number(),
-          competitionBar: z.number(),
-          trendBar: z.number(),
-          easeBar: z.number(),
-          pains: z.array(z.string()),
-          insight: z.string(),
-        }),
-      }),
-
-      prompt: `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português um score de 0-100, classificação (Excelente/Muito Boa/Boa/Arriscada), volume de busca estimado (ex: "320k/mês"), nível de concorrência, tendência YoY, facilidade de venda, barras (0-100) para cada indicador, 4-6 dores reais do público, e um insight estratégico curto.`,
-    });
+    const output = await generateStructured(gateway, ValidateOutput, `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português as chaves: score, classification, searchVolume, competition, trend, easeOfSale, searchBar, competitionBar, trendBar, easeBar, pains, insight. Score e barras devem ser números de 0-100. Pains deve conter 4-6 dores reais do público.`);
     return output;
   });
 
@@ -60,6 +80,23 @@ const OfferInput = z.object({
   pain: z.string().optional(),
   audience: z.string().optional(),
 });
+const stringArray = z.preprocess((value) => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string") return value.split(/\n|;|•|-/).map((item) => item.trim()).filter(Boolean);
+  return [];
+}, z.array(z.string()));
+const OfferOutput = z.object({
+  name: z.string().default("Oferta Gerada"),
+  bigIdea: z.string().default(""),
+  mechanism: z.string().default(""),
+  promise: z.string().default(""),
+  headline: z.string().default(""),
+  subheadline: z.string().default(""),
+  benefits: stringArray.default([]),
+  bonuses: stringArray.default([]),
+  guarantee: z.string().default("Garantia incondicional de 7 dias"),
+  priceSuggestion: z.string().default("R$ 97"),
+});
 
 export const generateOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -67,25 +104,7 @@ export const generateOffer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await consumeCredits(context.supabase, context.userId, 10, "generate_offer");
     const gateway = await getGateway();
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          name: z.string(),
-          bigIdea: z.string(),
-          mechanism: z.string(),
-          promise: z.string(),
-          headline: z.string(),
-          subheadline: z.string(),
-          benefits: z.array(z.string()),
-          bonuses: z.array(z.string()),
-          guarantee: z.string(),
-          priceSuggestion: z.string(),
-        }),
-      }),
-
-      prompt: `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Big Idea contraintuitiva, mecanismo único nomeado (com ™), promessa específica e mensurável com prazo, headline forte, subheadline complementar, 4-6 benefícios em bullets curtos, 3-5 bônus irresistíveis, garantia incondicional, sugestão de preço (R$).`,
-    });
+    const output = await generateStructured(gateway, OfferOutput, `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Retorne as chaves: name, bigIdea, mechanism, promise, headline, subheadline, benefits, bonuses, guarantee, priceSuggestion. Benefits deve ter 4-6 itens e bonuses 3-5 itens.`);
 
     const { data: saved, error } = await context.supabase
       .from("offers")
@@ -117,16 +136,7 @@ export const generateCopy = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await consumeCredits(context.supabase, context.userId, 5, "generate_copy");
     const gateway = await getGateway();
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          variations: z.array(z.string()),
-        }),
-      }),
-
-      prompt: `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente.`,
-    });
+    const output = await generateStructured(gateway, z.object({ variations: stringArray.default([]) }), `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente. Retorne a chave variations como array.`);
 
     // salvar como criativo
     await context.supabase.from("creatives").insert({
@@ -146,6 +156,16 @@ const EbookInput = z.object({
   niche: z.string(),
   tier: z.enum(["simple", "premium", "ultra"]).default("premium"),
 });
+const EbookOutput = z.object({
+  title: z.string().default("Ebook Gerado"),
+  subtitle: z.string().default(""),
+  chapters: z.array(z.object({
+    title: z.string().default("Capítulo"),
+    summary: z.string().default(""),
+    content: z.string().default(""),
+  })).default([]),
+  coverPrompt: z.string().default(""),
+});
 
 export const generateEbook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -155,23 +175,7 @@ export const generateEbook = createServerFn({ method: "POST" })
     const gateway = await getGateway();
     const chaptersCount = data.tier === "simple" ? 8 : data.tier === "premium" ? 12 : 20;
 
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          title: z.string(),
-          subtitle: z.string(),
-          chapters: z.array(z.object({
-            title: z.string(),
-            summary: z.string(),
-            content: z.string(),
-          })),
-          coverPrompt: z.string(),
-        }),
-      }),
-
-      prompt: `Crie um ebook profissional em português para o nicho "${data.niche}", título base "${data.title}". Tier: ${data.tier} (${chaptersCount} capítulos). Cada capítulo deve ter título cativante, summary de 1 frase, e content de 3-5 parágrafos com conteúdo útil e prático. Inclua um coverPrompt detalhado para gerar a capa.`,
-    });
+    const output = await generateStructured(gateway, EbookOutput, `Crie um ebook profissional em português para o nicho "${data.niche}", título base "${data.title}". Tier: ${data.tier} (${chaptersCount} capítulos). Retorne as chaves: title, subtitle, chapters, coverPrompt. Chapters deve ser um array de capítulos com title, summary e content. Cada capítulo deve ter conteúdo útil e prático.`);
 
     const { data: saved, error } = await context.supabase
       .from("ebooks")
