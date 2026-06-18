@@ -156,6 +156,16 @@ const EbookInput = z.object({
   niche: z.string(),
   tier: z.enum(["simple", "premium", "ultra"]).default("premium"),
 });
+const EbookOutput = z.object({
+  title: z.string().default("Ebook Gerado"),
+  subtitle: z.string().default(""),
+  chapters: z.array(z.object({
+    title: z.string().default("Capítulo"),
+    summary: z.string().default(""),
+    content: z.string().default(""),
+  })).default([]),
+  coverPrompt: z.string().default(""),
+});
 
 export const generateEbook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -165,23 +175,7 @@ export const generateEbook = createServerFn({ method: "POST" })
     const gateway = await getGateway();
     const chaptersCount = data.tier === "simple" ? 8 : data.tier === "premium" ? 12 : 20;
 
-    const { output } = await generateText({
-      model: gateway(MODEL),
-      output: Output.object({
-        schema: z.object({
-          title: z.string(),
-          subtitle: z.string(),
-          chapters: z.array(z.object({
-            title: z.string(),
-            summary: z.string(),
-            content: z.string(),
-          })),
-          coverPrompt: z.string(),
-        }),
-      }),
-
-      prompt: `Crie um ebook profissional em português para o nicho "${data.niche}", título base "${data.title}". Tier: ${data.tier} (${chaptersCount} capítulos). Cada capítulo deve ter título cativante, summary de 1 frase, e content de 3-5 parágrafos com conteúdo útil e prático. Inclua um coverPrompt detalhado para gerar a capa.`,
-    });
+    const output = await generateStructured(gateway, EbookOutput, `Crie um ebook profissional em português para o nicho "${data.niche}", título base "${data.title}". Tier: ${data.tier} (${chaptersCount} capítulos). Retorne as chaves: title, subtitle, chapters, coverPrompt. Chapters deve ser um array de capítulos com title, summary e content. Cada capítulo deve ter conteúdo útil e prático.`);
 
     const { data: saved, error } = await context.supabase
       .from("ebooks")
