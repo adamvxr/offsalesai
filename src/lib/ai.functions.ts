@@ -111,11 +111,6 @@ const OfferInput = z.object({
   pain: z.string().optional(),
   audience: z.string().optional(),
 });
-const stringArray = z.preprocess((value) => {
-  if (Array.isArray(value)) return value.map(String);
-  if (typeof value === "string") return value.split(/\n|;|•|-/).map((item) => item.trim()).filter(Boolean);
-  return [];
-}, z.array(z.string()));
 const OfferOutput = z.object({
   name: z.string().default("Oferta Gerada"),
   bigIdea: z.string().default(""),
@@ -133,7 +128,7 @@ export const generateOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => OfferInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 10, "generate_offer");
+    await assertCredits(context.supabase, context.userId, 10);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, OfferOutput, `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Retorne as chaves: name, bigIdea, mechanism, promise, headline, subheadline, benefits, bonuses, guarantee, priceSuggestion. Benefits deve ter 4-6 itens e bonuses 3-5 itens.`);
 
@@ -150,6 +145,7 @@ export const generateOffer = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.supabase, context.userId, 10, "generate_offer");
     return { offer: output, id: saved.id };
   });
 
@@ -165,7 +161,7 @@ export const generateCopy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CopyInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 5, "generate_copy");
+    await assertCredits(context.supabase, context.userId, 5);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, z.object({ variations: stringArray.default([]) }), `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente. Retorne a chave variations como array.`);
 
@@ -177,6 +173,7 @@ export const generateCopy = createServerFn({ method: "POST" })
       content: output.variations.join("\n\n---\n\n"),
     });
 
+    await consumeCredits(context.supabase, context.userId, 5, "generate_copy");
     return output;
   });
 
