@@ -12,13 +12,27 @@ async function getGateway() {
   return createLovableAiGatewayProvider(key);
 }
 
-async function consumeCredits(supabase: any, userId: string, amount: number, reason: string) {
-  const { error } = await supabase.rpc("consume_credits", {
+async function consumeCredits(userId: string, amount: number, reason: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.rpc("consume_credits", {
     _user_id: userId,
     _amount: amount,
     _reason: reason,
   });
   if (error) throw new Error(error.message);
+}
+
+async function assertCredits(supabase: any, userId: string, amount: number) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("credits")
+    .eq("id", userId)
+    .single();
+
+  if (error) throw new Error("Não foi possível verificar seus créditos.");
+  if ((data?.credits ?? 0) < amount) {
+    throw new Error(`Créditos insuficientes (saldo: ${data?.credits ?? 0}, necessário: ${amount})`);
+  }
 }
 
 function extractJsonObject(text: string) {
@@ -47,30 +61,55 @@ async function generateStructured<T>(gateway: Awaited<ReturnType<typeof getGatew
   }
 }
 
+const flexibleString = (fallback: string) => z.preprocess((value) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return String(record.label ?? record.value ?? record.level ?? record.status ?? JSON.stringify(value));
+  }
+  return String(value);
+}, z.string().default(fallback));
+
+const percentNumber = (fallback = 50) => z.preprocess((value) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const match = value.match(/\d+(?:[.,]\d+)?/);
+    return match ? Number(match[0].replace(",", ".")) : fallback;
+  }
+  return fallback;
+}, z.coerce.number().catch(fallback).transform((value) => Math.max(0, Math.min(100, Math.round(value)))));
+
+const stringArray = z.preprocess((value) => {
+  if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item : JSON.stringify(item));
+  if (typeof value === "string") return value.split(/\n|;|•|-/).map((item) => item.trim()).filter(Boolean);
+  return [];
+}, z.array(z.string()));
+
 // ---------- VALIDATE NICHE (5 créditos) ----------
 const ValidateInput = z.object({ niche: z.string().min(2), pain: z.string().optional() });
 const ValidateOutput = z.object({
-  score: z.coerce.number().default(0),
-  classification: z.string().default("Boa"),
-  searchVolume: z.string().default("Não estimado"),
-  competition: z.string().default("Média"),
-  trend: z.string().default("Estável"),
-  easeOfSale: z.string().default("Média"),
-  searchBar: z.coerce.number().default(50),
-  competitionBar: z.coerce.number().default(50),
-  trendBar: z.coerce.number().default(50),
-  easeBar: z.coerce.number().default(50),
-  pains: z.array(z.string()).default([]),
-  insight: z.string().default(""),
+  score: percentNumber(0).default(0),
+  classification: flexibleString("Boa"),
+  searchVolume: flexibleString("Não estimado"),
+  competition: flexibleString("Média"),
+  trend: flexibleString("Estável"),
+  easeOfSale: flexibleString("Média"),
+  searchBar: percentNumber().default(50),
+  competitionBar: percentNumber().default(50),
+  trendBar: percentNumber().default(50),
+  easeBar: percentNumber().default(50),
+  pains: stringArray.default([]),
+  insight: flexibleString(""),
 });
 
 export const validateNiche = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ValidateInput.parse(d))
   .handler(async ({ data, context }) => {
-    await consumeCredits(context.supabase, context.userId, 5, "validate_niche");
+    await assertCredits(context.supabase, context.userId, 5);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, ValidateOutput, `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português as chaves: score, classification, searchVolume, competition, trend, easeOfSale, searchBar, competitionBar, trendBar, easeBar, pains, insight. Score e barras devem ser números de 0-100. Pains deve conter 4-6 dores reais do público.`);
+    await consumeCredits(context.userId, 5, "validate_niche");
     return output;
   });
 
@@ -80,29 +119,24 @@ const OfferInput = z.object({
   pain: z.string().optional(),
   audience: z.string().optional(),
 });
-const stringArray = z.preprocess((value) => {
-  if (Array.isArray(value)) return value.map(String);
-  if (typeof value === "string") return value.split(/\n|;|•|-/).map((item) => item.trim()).filter(Boolean);
-  return [];
-}, z.array(z.string()));
 const OfferOutput = z.object({
-  name: z.string().default("Oferta Gerada"),
-  bigIdea: z.string().default(""),
-  mechanism: z.string().default(""),
-  promise: z.string().default(""),
-  headline: z.string().default(""),
-  subheadline: z.string().default(""),
+  name: flexibleString("Oferta Gerada"),
+  bigIdea: flexibleString(""),
+  mechanism: flexibleString(""),
+  promise: flexibleString(""),
+  headline: flexibleString(""),
+  subheadline: flexibleString(""),
   benefits: stringArray.default([]),
   bonuses: stringArray.default([]),
-  guarantee: z.string().default("Garantia incondicional de 7 dias"),
-  priceSuggestion: z.string().default("R$ 97"),
+  guarantee: flexibleString("Garantia incondicional de 7 dias"),
+  priceSuggestion: flexibleString("R$ 97"),
 });
 
 export const generateOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => OfferInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 10, "generate_offer");
+    await assertCredits(context.supabase, context.userId, 10);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, OfferOutput, `Crie uma oferta de infoproduto matadora em português para o nicho "${data.niche}"${data.pain ? `, dor central: "${data.pain}"` : ""}${data.audience ? `, público: "${data.audience}"` : ""}. Use copywriting de resposta direta brasileiro. Retorne as chaves: name, bigIdea, mechanism, promise, headline, subheadline, benefits, bonuses, guarantee, priceSuggestion. Benefits deve ter 4-6 itens e bonuses 3-5 itens.`);
 
@@ -119,6 +153,7 @@ export const generateOffer = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.userId, 10, "generate_offer");
     return { offer: output, id: saved.id };
   });
 
@@ -134,7 +169,7 @@ export const generateCopy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CopyInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 5, "generate_copy");
+    await assertCredits(context.supabase, context.userId, 5);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, z.object({ variations: stringArray.default([]) }), `Gere 3 variações de copy para o canal "${data.channel}", oferta "${data.offerTitle}"${data.bigIdea ? `, Big Idea: ${data.bigIdea}` : ""}${data.promise ? `, Promessa: ${data.promise}` : ""}. Português brasileiro, persuasivo, com gatilhos mentais (urgência, prova social, autoridade), adequado ao formato e limite de caracteres do canal. Cada variação deve ter ângulo diferente. Retorne a chave variations como array.`);
 
@@ -146,6 +181,7 @@ export const generateCopy = createServerFn({ method: "POST" })
       content: output.variations.join("\n\n---\n\n"),
     });
 
+    await consumeCredits(context.userId, 5, "generate_copy");
     return output;
   });
 
@@ -171,7 +207,7 @@ export const generateEbook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => EbookInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 20, "generate_ebook");
+    await assertCredits(context.supabase, context.userId, 20);
     const gateway = await getGateway();
     const chaptersCount = data.tier === "simple" ? 8 : data.tier === "premium" ? 12 : 20;
 
@@ -188,6 +224,7 @@ export const generateEbook = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.userId, 20, "generate_ebook");
     return { ebook: output, id: saved.id };
   });
 
@@ -205,7 +242,7 @@ export const generateLandingPage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => LandingInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 25, "generate_landing");
+    await assertCredits(context.supabase, context.userId, 25);
     const gateway = await getGateway();
 
     const { text } = await generateText({
@@ -238,6 +275,7 @@ Inclua seções: hero com CTA, benefícios (4-6), prova social, depoimentos (3),
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.userId, 25, "generate_landing");
     return { id: saved.id, slug, html };
   });
 
@@ -252,7 +290,7 @@ export const generateCreative = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CreativeInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 15, "generate_creative");
+    await assertCredits(context.supabase, context.userId, 15);
     const gateway = await getGateway();
 
     const { text } = await generateText({
@@ -272,5 +310,6 @@ export const generateCreative = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.userId, 15, "generate_creative");
     return { id: saved.id, content: text };
   });
