@@ -199,7 +199,7 @@ export const generateEbook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => EbookInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 20, "generate_ebook");
+    await assertCredits(context.supabase, context.userId, 20);
     const gateway = await getGateway();
     const chaptersCount = data.tier === "simple" ? 8 : data.tier === "premium" ? 12 : 20;
 
@@ -216,6 +216,7 @@ export const generateEbook = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.supabase, context.userId, 20, "generate_ebook");
     return { ebook: output, id: saved.id };
   });
 
@@ -233,7 +234,7 @@ export const generateLandingPage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => LandingInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 25, "generate_landing");
+    await assertCredits(context.supabase, context.userId, 25);
     const gateway = await getGateway();
 
     const { text } = await generateText({
@@ -266,6 +267,7 @@ Inclua seções: hero com CTA, benefícios (4-6), prova social, depoimentos (3),
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.supabase, context.userId, 25, "generate_landing");
     return { id: saved.id, slug, html };
   });
 
@@ -280,7 +282,7 @@ export const generateCreative = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CreativeInput.parse(d))
   .handler(async ({ context, data }) => {
-    await consumeCredits(context.supabase, context.userId, 15, "generate_creative");
+    await assertCredits(context.supabase, context.userId, 15);
     const gateway = await getGateway();
 
     const { text } = await generateText({
@@ -300,5 +302,6 @@ export const generateCreative = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+    await consumeCredits(context.supabase, context.userId, 15, "generate_creative");
     return { id: saved.id, content: text };
   });
