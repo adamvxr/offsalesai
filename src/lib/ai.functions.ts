@@ -69,7 +69,14 @@ const flexibleString = (fallback: string) => z.preprocess((value) => {
   return String(value);
 }, z.string().default(fallback));
 
-const percentNumber = z.coerce.number().catch(50).transform((value) => Math.max(0, Math.min(100, Math.round(value))));
+const percentNumber = (fallback = 50) => z.preprocess((value) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const match = value.match(/\d+(?:[.,]\d+)?/);
+    return match ? Number(match[0].replace(",", ".")) : fallback;
+  }
+  return fallback;
+}, z.coerce.number().catch(fallback).transform((value) => Math.max(0, Math.min(100, Math.round(value)))));
 
 const stringArray = z.preprocess((value) => {
   if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item : JSON.stringify(item));
@@ -80,16 +87,16 @@ const stringArray = z.preprocess((value) => {
 // ---------- VALIDATE NICHE (5 créditos) ----------
 const ValidateInput = z.object({ niche: z.string().min(2), pain: z.string().optional() });
 const ValidateOutput = z.object({
-  score: z.coerce.number().default(0),
+  score: percentNumber(0).default(0),
   classification: flexibleString("Boa"),
   searchVolume: flexibleString("Não estimado"),
   competition: flexibleString("Média"),
   trend: flexibleString("Estável"),
   easeOfSale: flexibleString("Média"),
-  searchBar: percentNumber.default(50),
-  competitionBar: percentNumber.default(50),
-  trendBar: percentNumber.default(50),
-  easeBar: percentNumber.default(50),
+  searchBar: percentNumber().default(50),
+  competitionBar: percentNumber().default(50),
+  trendBar: percentNumber().default(50),
+  easeBar: percentNumber().default(50),
   pains: stringArray.default([]),
   insight: flexibleString(""),
 });
@@ -112,16 +119,16 @@ const OfferInput = z.object({
   audience: z.string().optional(),
 });
 const OfferOutput = z.object({
-  name: z.string().default("Oferta Gerada"),
-  bigIdea: z.string().default(""),
-  mechanism: z.string().default(""),
-  promise: z.string().default(""),
-  headline: z.string().default(""),
-  subheadline: z.string().default(""),
+  name: flexibleString("Oferta Gerada"),
+  bigIdea: flexibleString(""),
+  mechanism: flexibleString(""),
+  promise: flexibleString(""),
+  headline: flexibleString(""),
+  subheadline: flexibleString(""),
   benefits: stringArray.default([]),
   bonuses: stringArray.default([]),
-  guarantee: z.string().default("Garantia incondicional de 7 dias"),
-  priceSuggestion: z.string().default("R$ 97"),
+  guarantee: flexibleString("Garantia incondicional de 7 dias"),
+  priceSuggestion: flexibleString("R$ 97"),
 });
 
 export const generateOffer = createServerFn({ method: "POST" })
