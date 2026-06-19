@@ -12,8 +12,9 @@ async function getGateway() {
   return createLovableAiGatewayProvider(key);
 }
 
-async function consumeCredits(supabase: any, userId: string, amount: number, reason: string) {
-  const { error } = await supabase.rpc("consume_credits", {
+async function consumeCredits(userId: string, amount: number, reason: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.rpc("consume_credits", {
     _user_id: userId,
     _amount: amount,
     _reason: reason,
@@ -108,7 +109,7 @@ export const validateNiche = createServerFn({ method: "POST" })
     await assertCredits(context.supabase, context.userId, 5);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, ValidateOutput, `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português as chaves: score, classification, searchVolume, competition, trend, easeOfSale, searchBar, competitionBar, trendBar, easeBar, pains, insight. Score e barras devem ser números de 0-100. Pains deve conter 4-6 dores reais do público.`);
-    await consumeCredits(context.supabase, context.userId, 5, "validate_niche");
+    await consumeCredits(context.userId, 5, "validate_niche");
     return output;
   });
 
@@ -152,7 +153,7 @@ export const generateOffer = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
-    await consumeCredits(context.supabase, context.userId, 10, "generate_offer");
+    await consumeCredits(context.userId, 10, "generate_offer");
     return { offer: output, id: saved.id };
   });
 
@@ -180,7 +181,7 @@ export const generateCopy = createServerFn({ method: "POST" })
       content: output.variations.join("\n\n---\n\n"),
     });
 
-    await consumeCredits(context.supabase, context.userId, 5, "generate_copy");
+    await consumeCredits(context.userId, 5, "generate_copy");
     return output;
   });
 
@@ -223,7 +224,7 @@ export const generateEbook = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
-    await consumeCredits(context.supabase, context.userId, 20, "generate_ebook");
+    await consumeCredits(context.userId, 20, "generate_ebook");
     return { ebook: output, id: saved.id };
   });
 
@@ -274,7 +275,7 @@ Inclua seções: hero com CTA, benefícios (4-6), prova social, depoimentos (3),
       .select()
       .single();
     if (error) throw error;
-    await consumeCredits(context.supabase, context.userId, 25, "generate_landing");
+    await consumeCredits(context.userId, 25, "generate_landing");
     return { id: saved.id, slug, html };
   });
 
@@ -309,6 +310,6 @@ export const generateCreative = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
-    await consumeCredits(context.supabase, context.userId, 15, "generate_creative");
+    await consumeCredits(context.userId, 15, "generate_creative");
     return { id: saved.id, content: text };
   });
