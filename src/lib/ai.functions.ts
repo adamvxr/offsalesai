@@ -21,6 +21,19 @@ async function consumeCredits(supabase: any, userId: string, amount: number, rea
   if (error) throw new Error(error.message);
 }
 
+async function assertCredits(supabase: any, userId: string, amount: number) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("credits")
+    .eq("id", userId)
+    .single();
+
+  if (error) throw new Error("Não foi possível verificar seus créditos.");
+  if ((data?.credits ?? 0) < amount) {
+    throw new Error(`Créditos insuficientes (saldo: ${data?.credits ?? 0}, necessário: ${amount})`);
+  }
+}
+
 function extractJsonObject(text: string) {
   const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
   const start = cleaned.indexOf("{");
@@ -47,30 +60,48 @@ async function generateStructured<T>(gateway: Awaited<ReturnType<typeof getGatew
   }
 }
 
+const flexibleString = (fallback: string) => z.preprocess((value) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return String(record.label ?? record.value ?? record.level ?? record.status ?? JSON.stringify(value));
+  }
+  return String(value);
+}, z.string().default(fallback));
+
+const percentNumber = z.coerce.number().catch(50).transform((value) => Math.max(0, Math.min(100, Math.round(value))));
+
+const stringArray = z.preprocess((value) => {
+  if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item : JSON.stringify(item));
+  if (typeof value === "string") return value.split(/\n|;|•|-/).map((item) => item.trim()).filter(Boolean);
+  return [];
+}, z.array(z.string()));
+
 // ---------- VALIDATE NICHE (5 créditos) ----------
 const ValidateInput = z.object({ niche: z.string().min(2), pain: z.string().optional() });
 const ValidateOutput = z.object({
   score: z.coerce.number().default(0),
-  classification: z.string().default("Boa"),
-  searchVolume: z.string().default("Não estimado"),
-  competition: z.string().default("Média"),
-  trend: z.string().default("Estável"),
-  easeOfSale: z.string().default("Média"),
-  searchBar: z.coerce.number().default(50),
-  competitionBar: z.coerce.number().default(50),
-  trendBar: z.coerce.number().default(50),
-  easeBar: z.coerce.number().default(50),
-  pains: z.array(z.string()).default([]),
-  insight: z.string().default(""),
+  classification: flexibleString("Boa"),
+  searchVolume: flexibleString("Não estimado"),
+  competition: flexibleString("Média"),
+  trend: flexibleString("Estável"),
+  easeOfSale: flexibleString("Média"),
+  searchBar: percentNumber.default(50),
+  competitionBar: percentNumber.default(50),
+  trendBar: percentNumber.default(50),
+  easeBar: percentNumber.default(50),
+  pains: stringArray.default([]),
+  insight: flexibleString(""),
 });
 
 export const validateNiche = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ValidateInput.parse(d))
   .handler(async ({ data, context }) => {
-    await consumeCredits(context.supabase, context.userId, 5, "validate_niche");
+    await assertCredits(context.supabase, context.userId, 5);
     const gateway = await getGateway();
     const output = await generateStructured(gateway, ValidateOutput, `Você é um analista sênior de mercado de infoprodutos brasileiros. Avalie o nicho "${data.niche}"${data.pain ? ` com foco na dor "${data.pain}"` : ""}. Retorne em português as chaves: score, classification, searchVolume, competition, trend, easeOfSale, searchBar, competitionBar, trendBar, easeBar, pains, insight. Score e barras devem ser números de 0-100. Pains deve conter 4-6 dores reais do público.`);
+    await consumeCredits(context.supabase, context.userId, 5, "validate_niche");
     return output;
   });
 
